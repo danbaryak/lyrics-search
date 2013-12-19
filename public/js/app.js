@@ -9,6 +9,51 @@ function NavCtrl($scope, $routeSegment) {
     $scope.$routeSegment = $routeSegment;
 }
 
+app.directive('ngEnter', function () {
+    return function (scope, element, attrs) {
+        element.bind("keydown keypress", function (event) {
+            if(event.which === 13) {
+                scope.$apply(function (){
+                    scope.$eval(attrs.ngEnter);
+                });
+
+                event.preventDefault();
+            }
+        });
+    };
+});
+
+function MainCtrl($scope, $routeSegment, $http) {
+
+    $scope.videos = {}
+
+    $scope.videosFor = function(result) {
+
+        return $scope.videos[result.artist.name + ' ' + result.title];
+    }
+
+    $scope.search = function(query) {
+        $scope.results = null;
+        $scope.searching = true;
+        $scope.$apply();
+        $http.get('/search?q=' + query).success(function(data) {
+            $scope.results = data;
+            $scope.searching = false;
+            $scope.$apply();
+
+            for (var i = 0; i < data.length; i++) {
+                var result = data[i];
+                $http.get('/yt?q=' + result.artist.name + ' ' + result.title).success(function(ytData) {
+                    this.videos = ytData.items;
+                    if (i == data.length - 1) {
+                        $scope.$apply();
+                    }
+                }.bind(result));
+            }
+        });
+    }
+
+}
 
 function InfoCtrl($scope, $routeSegment) {
 
@@ -101,7 +146,8 @@ app.config(function ($routeSegmentProvider, $routeProvider) {
         .when('/second/info', 'second.info')
 
         .segment('first', {
-            templateUrl: 'partials/first.html'
+            templateUrl: 'partials/first.html',
+            controller: MainCtrl
         })
         .segment('second', {
             templateUrl: 'partials/second.html',
